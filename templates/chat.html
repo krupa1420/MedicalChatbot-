@@ -76,6 +76,16 @@
     const input = $('#text');
     const btn = $('#send');
 
+    //Clear backend memory when page loads (refresh = new chat)
+    window.addEventListener("load", async () => {
+      try {
+        await fetch("/reset", { method: "POST" });
+        console.log("Chat memory cleared");
+      } catch (err) {
+        console.error("Reset failed:", err);
+      }
+    });
+    
     const scrollBottom = () => chatBody.scrollTop = chatBody.scrollHeight;
 
     function addMsg(templateId, text) {
