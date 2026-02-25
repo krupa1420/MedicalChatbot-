@@ -38,8 +38,6 @@ chatModel = ChatOpenAI(
     openai_api_base="https://openrouter.ai/api/v1",
 )
 
-Chat_history = []   # temporary, in-RAM only
-
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt),
@@ -58,17 +56,13 @@ def index():
 
 @app.route("/get", methods=["GET","POST"])
 def chat():
-    global CHAT_HISTORY
-    msg = request.form.get("msg", "")
-    if not msg:
-        return ""
+    msg = request.form["msg"]
+    input = msg
+    print(input)
+    response = rag_chain.invoke({"input": msg})
+    print("Response : ", response["answer"])
+    return str(response["answer"])
 
-    result = rag_chain.invoke({
-        "input": msg,
-        "chat_history": CHAT_HISTORY
-    })
-
-    answer = result["answer"]
 
     # update in-memory history
     CHAT_HISTORY.append(HumanMessage(content=msg))
@@ -83,7 +77,8 @@ def chat():
 def reset():
     global CHAT_HISTORY
     CHAT_HISTORY = []
-    return jsonify({"ok": True})
+    return jsonify({"status": "success", "message": "Chat history cleared."})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug = True)
