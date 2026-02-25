@@ -15,8 +15,9 @@ app = Flask(__name__)
 
 load_dotenv()
 
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+PINECONE_API_KEY = (os.getenv("PINECONE_API_KEY") or "").strip()
+OPENROUTER_API_KEY = (os.getenv("OPENROUTER_API_KEY") or "").strip()
 #set the environment variables for Pinecone and OpenAI API keys
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
 os.environ["OPENROUTER_API_KEY"] = OPENROUTER_API_KEY
