@@ -1,7 +1,7 @@
 # MedicalChatbot-
 Medical Chatbot with LLMs, LangChain, Pinecone, Flask &amp; AWS
 
-## How to run?
+## Steps
 ```bash 
 git clone https://github.com/krupa1420/MedicalChatbot-.git
 
