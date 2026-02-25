@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediGuide • Chatbot</title>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966481.png" />
+  <!-- Custom stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body data-theme="dark">
+  <main class="container py-4 chat-shell">
+    <section class="app-card">
+      <header class="app-header">
+        <div class="brand-icon" aria-hidden="true">
+          <i class="fa-solid fa-stethoscope"></i>
+          <span class="presence-dot" title="Online"></span>
+        </div>
+        <div class="flex-grow-1">
+          <div class="title h5 mb-0">MediGuide Chat</div>
+          <div class="subtitle">Educational health assistant • grounded by book corpus</div>
+        </div>
+        <div class="toolbar">
+          <button id="btnTheme" class="theme-toggle" aria-label="Toggle theme"><i class="fa-regular fa-sun"></i></button>
+        </div>
+      </header>
+
+      <div class="banner"><i class="fa-solid fa-circle-info"></i>
+        For education only — not a substitute for professional medical advice. In an emergency, call your local emergency number.
+      </div>
+
+      <section id="chatBody" class="chat-body" aria-live="polite" aria-label="Conversation"><!-- messages inject here --></section>
+
+      <footer class="app-footer">
+        <form id="chatForm" class="input-wrap" autocomplete="off">
+          <i class="fa-solid fa-comment-medical ms-1" aria-hidden="true"></i>
+          <input id="text" name="msg" class="form-control" placeholder="Ask a medical question…" required />
+          <button id="send" class="btn btn-send" type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+        <div class="mt-2 small text-secondary">By using this chat, you agree to the
+          <a class="small-link" href="#" onclick="alert('Add your policy URL here');return false;">use policy</a>.
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <template id="tpl-user">
+    <div class="msg user">
+      <div class="bubble"></div>
+      <div class="avatar user"><i class="fa-solid fa-user"></i></div>
+    </div>
+  </template>
+  <template id="tpl-bot">
+    <div class="msg">
+      <div class="avatar"><i class="fa-solid fa-staff-snake"></i></div>
+      <div class="bubble"></div>
+    </div>
+  </template>
+  <template id="tpl-typing">
+    <div class="msg" id="typing">
+      <div class="avatar"><i class="fa-solid fa-staff-snake"></i></div>
+      <div class="bubble"><span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+    </div>
+  </template>
+
+  <script>
+    const $ = (s, r=document) => r.querySelector(s);
+    const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+    const chatBody = $('#chatBody');
+    const form = $('#chatForm');
+    const input = $('#text');
+    const btn = $('#send');
+
+    const scrollBottom = () => chatBody.scrollTop = chatBody.scrollHeight;
+
+    function addMsg(templateId, text) {
+      const tpl = $(templateId).content.cloneNode(true);
+      const bubble = tpl.querySelector('.bubble');
+      if (text) bubble.innerHTML = sanitize(text);
+      chatBody.appendChild(tpl);
+      scrollBottom();
+    }
+
+    function showTyping() {
+      const tpl = $('#tpl-typing').content.cloneNode(true);
+      chatBody.appendChild(tpl);
+      scrollBottom();
+    }
+    function hideTyping() { $('#typing')?.remove(); }
+
+    function sanitize(html) {
+      const div = document.createElement('div');
+      div.textContent = html;
+      let safe = div.innerHTML.replace(/\n/g, '<br>');
+      return safe;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      const u = $('#tpl-user').content.cloneNode(true);
+      u.querySelector('.bubble').innerHTML = sanitize(text);
+      chatBody.appendChild(u);
+      input.value = '';
+      input.focus();
+      scrollBottom();
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      showTyping();
+
+      try {
+        const res = await fetch('/get', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+          body: new URLSearchParams({ msg: text })
+        });
+        const data = await res.text();
+        hideTyping();
+        addMsg('#tpl-bot', data || 'Sorry, I could not generate a response.');
+      } catch (err) {
+        hideTyping();
+        addMsg('#tpl-bot', '⚠️ Network error. Please try again.');
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+      }
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    const themeBtn = $('#btnTheme');
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.body.setAttribute('data-theme', saved);
+    updateThemeIcon();
+
+    themeBtn.addEventListener('click', () => {
+      const current = document.body.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon();
+    });
+
+    function updateThemeIcon(){
+      const isLight = document.body.getAttribute('data-theme') === 'light';
+      themeBtn.innerHTML = isLight ? '<i class="fa-regular fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+    }
+
+    addMsg('#tpl-bot', 'Hi! I can answer general medical questions grounded in your book corpus. How can I help today?');
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
